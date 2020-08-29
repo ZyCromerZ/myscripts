@@ -56,7 +56,7 @@ INCREMENTAL=1
 KERNEL_NAME=$(cat "$(pwd)/arch/arm64/configs/begonia_user_defconfig" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )
 ZIP_KERNEL_VERSION="4.14.$(cat "$(pwd)/Makefile" | grep "SUBLEVEL =" | sed 's/SUBLEVEL = *//g')$(cat "$(pwd)/Makefile" | grep "EXTRAVERSION =" | sed 's/EXTRAVERSION = *//g')"
 TANGGAL=$(date +"%m%d")
-ZIPNAME="[$TANGGAL][Begonia][Miui-A10]$ZIP_KERNEL_VERSION-$KERNEL_NAME"
+ZIPNAME="[$TANGGAL][Begonia][AOSP-CFW]$ZIP_KERNEL_VERSION-$KERNEL_NAME"
 
 # Push ZIP to Telegram. 1 is YES | 0 is NO(default)
 PTTG=1
