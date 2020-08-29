@@ -144,7 +144,7 @@ DATE=$(TZ=Asia/Jakarta date +"%Y%m%d-%T")
 	git clone --depth 1 --no-single-branch https://github.com/ZyCromerZ/AnyKernel3.git -b master-begonia AnyKernel3
     cp -af AnyKernel3/anykernel-real.sh AnyKernel3/anykernel.sh
     sed -i "s/kernel.string=.*/kernel.string=$KERNEL_NAME-$GetCommit by ZyCromerZ/g" AnyKernel3/anykernel.sh
-    curl https://github.com/ZyCromerZ/spectrum/blob/master/bego-on.rc && mv bego-on.rc AnyKernel3/init.spectrum.rc
+    curl https://raw.githubusercontent.com/ZyCromerZ/spectrum/master/bego-on.rc > AnyKernel3/init.spectrum.rc
     sed -i "s/persist.spectrum.kernel.*/persist.spectrum.kernel $KERNEL_NAME/g" AnyKernel3/init.spectrum.rc
 }
 
