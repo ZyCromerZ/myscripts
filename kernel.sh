@@ -53,10 +53,11 @@ COMPILER=clang
 INCREMENTAL=1
 
 # The name of the Kernel, to name the ZIP
+GetCommit=$(git log --pretty=format:'%h' -1)
 KERNEL_NAME=$(cat "$(pwd)/arch/arm64/configs/begonia_user_defconfig" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )
 ZIP_KERNEL_VERSION="4.14.$(cat "$(pwd)/Makefile" | grep "SUBLEVEL =" | sed 's/SUBLEVEL = *//g')$(cat "$(pwd)/Makefile" | grep "EXTRAVERSION =" | sed 's/EXTRAVERSION = *//g')"
 TANGGAL=$(date +"%m%d")
-ZIPNAME="[$TANGGAL][Begonia][Miui-A10]$ZIP_KERNEL_VERSION-$KERNEL_NAME"
+ZIPNAME="[$TANGGAL][Begonia][Miui-A10]$ZIP_KERNEL_VERSION-$KERNEL_NAME-$GetCommit"
 
 # Push ZIP to Telegram. 1 is YES | 0 is NO(default)
 PTTG=1
@@ -142,7 +143,7 @@ DATE=$(TZ=Asia/Jakarta date +"%Y%m%d-%T")
 	msg "|| Cloning Anykernel ||"
 	git clone --depth 1 --no-single-branch https://github.com/ZyCromerZ/AnyKernel3.git -b master-begonia AnyKernel3
     cp -af AnyKernel3/anykernel-real.sh AnyKernel3/anykernel.sh
-    sed -i "s/kernel.string=.*/kernel.string=$KERNEL_NAME by ZyCromerZ/g" AnyKernel3/anykernel.sh
+    sed -i "s/kernel.string=.*/kernel.string=$KERNEL_NAME-$GetCommit by ZyCromerZ/g" AnyKernel3/anykernel.sh
     curl https://github.com/ZyCromerZ/spectrum/blob/master/bego-on.rc && mv bego-on.rc AnyKernel3/init.spectrum.rc
     sed -i "s/persist.spectrum.kernel.*/persist.spectrum.kernel $KERNEL_NAME/g" AnyKernel3/init.spectrum.rc
 }
