@@ -35,32 +35,35 @@ err() {
 # The defult directory where the kernel should be placed
 KERNEL_DIR=$PWD
 
-# The name of the Kernel, to name the ZIP
-ZIPNAME="SiLonT-TEST"
-
 # The name of the device for which the kernel is built
-MODEL="Redmi Note 5 Pro"
+MODEL="Redmi Note 8 Pro"
 
 # The codename of the device
-DEVICE="whyred"
+DEVICE="Begonia"
 
 # The defconfig which should be used. Get it from config.gz from
 # your device or check source
-DEFCONFIG=whyred_defconfig
+DEFCONFIG=begonia_user_defconfig
 
 # Specify compiler. 
 # 'clang' or 'gcc'
-COMPILER=gcc
+COMPILER=clang
 
 # Clean source prior building. 1 is NO(default) | 0 is YES
 INCREMENTAL=1
+
+# The name of the Kernel, to name the ZIP
+KERNEL_NAME=$(cat "$(pwd)/arch/arm64/configs/begonia_user_defconfig" | grep "CONFIG_LOCALVERSION=" | sed 's/CONFIG_LOCALVERSION="-*//g' | sed 's/"*//g' )
+ZIP_KERNEL_VERSION="4.14.$(cat "$(pwd)/Makefile" | grep "SUBLEVEL =" | sed 's/SUBLEVEL = *//g')$(cat "$(pwd)/Makefile" | grep "EXTRAVERSION =" | sed 's/EXTRAVERSION = *//g')"
+TANGGAL=$(date +"%m%d")
+ZIPNAME="[$TANGGAL][Begonia][Miui-A10]$ZIP_KERNEL_VERSION-$KERNEL_NAME"
 
 # Push ZIP to Telegram. 1 is YES | 0 is NO(default)
 PTTG=1
 	if [ $PTTG = 1 ]
 	then
 		# Set Telegram Chat ID
-		CHATID="-1001403511595"
+		CHATID="-1001301538740"
 	fi
 
 # Generate a full DEFCONFIG prior building. 1 is YES | 0 is NO(default)
@@ -90,7 +93,7 @@ LOG_DEBUG=0
 
 ## Set defaults first
 DISTRO=$(cat /etc/issue)
-KBUILD_BUILD_HOST=Laptop-Sangar
+KBUILD_BUILD_HOST="ZyCromerZ-Drone"
 CI_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 token=$TELEGRAM_TOKEN
 export KBUILD_BUILD_HOST CI_BRANCH
@@ -107,7 +110,7 @@ then
 	if [ -n "$DRONE" ]
 	then
 		export KBUILD_BUILD_VERSION=$DRONE_BUILD_NUMBER
-		export KBUILD_BUILD_HOST=Laptop-Sangar
+		export KBUILD_BUILD_HOST="ZyCromerZ-Drone"
 		export CI_BRANCH=$DRONE_BRANCH
 	else
 		echo "Not presetting Build Version"
@@ -128,25 +131,31 @@ DATE=$(TZ=Asia/Jakarta date +"%Y%m%d-%T")
 
  clone() {
 	echo " "
-		msg "|| Cloning GCC 9.3.0 baremetal ||"
-		git clone --depth=1 https://github.com/arter97/arm64-gcc.git gcc64
-		git clone --depth=1 https://github.com/arter97/arm32-gcc.git gcc32
+		msg "|| Cloning clang 9.0.4 from github and gcc prebuild from google ||"
+		git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b android-10.0.0_r41 gcc64
+		git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 -b android-10.0.0_r41 gcc32
+		git clone --depth=1 https://github.com/ZyCromerZ/google-clang -b 9.0.4-r353983d clang
 		GCC64_DIR=$KERNEL_DIR/gcc64
 		GCC32_DIR=$KERNEL_DIR/gcc32
+        CLANG_DIR=$KERNEL_DIR/clang
 
 	msg "|| Cloning Anykernel ||"
-	git clone --depth 1 --no-single-branch https://github.com/Reinazhard/AnyKernel3.git -b master
+	git clone --depth 1 --no-single-branch https://github.com/ZyCromerZ/AnyKernel3.git -b master-begonia AnyKernel3
+    cp -af AnyKernel3/anykernel-real.sh AnyKernel3/anykernel.sh
+    sed -i "s/kernel.string=.*/kernel.string=$KERNEL_NAME by ZyCromerZ/g" AnyKernel3/anykernel.sh
+    curl https://github.com/ZyCromerZ/spectrum/blob/master/bego-on.rc && mv bego-on.rc AnyKernel3/init.spectrum.rc
+    sed -i "s/persist.spectrum.kernel.*/persist.spectrum.kernel $KERNEL_NAME/g" AnyKernel3/init.spectrum.rc
 }
 
 ##------------------------------------------------------##
 
 exports() {
-	export KBUILD_BUILD_USER="reina"
+	export KBUILD_BUILD_USER="ZyCromerZ"
 	export ARCH=arm64
 	export SUBARCH=arm64
 
 	KBUILD_COMPILER_STRING=$("$GCC64_DIR"/bin/aarch64-elf-gcc --version | head -n 1)
-	PATH=$GCC64_DIR/bin/:$GCC32_DIR/bin/:/usr/bin:$PATH
+	PATH=$CLANG_DIR/bin:$GCC64_DIR/bin/:$GCC32_DIR/bin/:/usr/bin:$PATH
 
 	export PATH KBUILD_COMPILER_STRING
 	export BOT_MSG_URL="https://api.telegram.org/bot$token/sendMessage"
@@ -158,7 +167,7 @@ exports() {
 ##---------------------------------------------------------##
 
 tg_post_msg() {
-	curl -s -X POST "$BOT_MSG_URL" -d chat_id="-1001403511595" \
+	curl -s -X POST "$BOT_MSG_URL" -d chat_id="-1001301538740" \
 	-d "disable_web_page_preview=true" \
 	-d "parse_mode=html" \
 	-d text="$1"
@@ -190,7 +199,7 @@ build_kernel() {
 
 	if [ "$PTTG" = 1 ]
  	then
-		tg_post_msg "<b>🔨 $KBUILD_BUILD_VERSION CI Build Triggered</b>%0A<b>Docker OS: </b><code>$DISTRO</code>%0A<b>Kernel Version : </b><code>$KERVER</code>%0A<b>Date : </b><code>$(TZ=Asia/Jakarta date)</code>%0A<b>Device : </b><code>$MODEL [$DEVICE]</code>%0A<b>Pipeline Host : </b><code>$KBUILD_BUILD_HOST</code>%0A<b>Host Core Count : </b><code>$PROCS</code>%0A<b>Compiler Used : </b><code>$KBUILD_COMPILER_STRING</code>%0a<b>Branch : </b><code>$CI_BRANCH</code>%0A<b>Top Commit : </b><a href='$DRONE_COMMIT_LINK'><code>$COMMIT_HEAD</code></a>%0A<b>Status : </b>#Nightly" "$CHATID"
+		tg_post_msg "<b>🔨 $KBUILD_BUILD_VERSION CI Build Triggered</b>%0A<b>Docker OS: </b><code>$DISTRO</code>%0A<b>Kernel Version : </b><code>$KERVER</code>%0A<b>Date : </b><code>$(TZ=Asia/Jakarta date)</code>%0A<b>Device : </b><code>$MODEL [$DEVICE]</code>%0A<b>Pipeline Host : </b><code>$KBUILD_BUILD_HOST</code>%0A<b>Host Core Count : </b><code>$PROCS</code>%0A<b>Compiler Used : </b><code>$KBUILD_COMPILER_STRING</code>%0a<b>Branch : </b><code>$CI_BRANCH</code>%0A<b>Top Commit : </b><a href='$DRONE_COMMIT_LINK'><code>$COMMIT_HEAD</code></a>%0A<b>Status : </b>#Stable" "$CHATID"
 	fi
 
 	make O=out $DEFCONFIG
@@ -208,12 +217,25 @@ build_kernel() {
 	if [ $COMPILER = "clang" ]
 	then
 		MAKE+=(
-			CROSS_COMPILE=aarch64-linux-gnu- \
-			CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-			CC=clang \
-			AR=llvm-ar \
-			OBJDUMP=llvm-objdump \
-			STRIP=llvm-strip
+            			PATH=$CLANG_DIR/bin:$GCC64_DIR/bin/:$GCC32_DIR/bin/:/usr/bin:$PATH \
+				LD_LIBRARY_PATH="$CLANG_DIR/lib64:${LD_LIBRARY_PATH}" \
+				CC=clang \
+				CROSS_COMPILE=aarch64-linux-android- \
+				CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+				AR=aarch64-linux-androidkernel-ar \
+				AS=llvm-as \
+				NM=llvm-nm \
+				OBJCOPY=aarch64-linux-androidkernel-objcopy \
+				OBJDUMP=llvm-objdump \
+				OBJSIZE=llvm-size \
+				READELF=llvm-readelf \
+				STRIP=llvm-strip \
+				HOSTCC=clang \
+				HOSTCXX=clang++ \
+				HOSTAR=aarch64-linux-androidkernel-ar \
+				HOSTLD=ld.lld \
+				LD=ld.lld \
+				CLANG_TRIPLE=aarch64-linux-gnu-
 		)
 	fi
 	
@@ -223,8 +245,26 @@ build_kernel() {
 	fi
 
 	msg "|| Started Compilation ||"
-	export CROSS_COMPILE_ARM32=$GCC32_DIR/bin/arm-eabi-
-	make -j"$PROCS" O=out CROSS_COMPILE=aarch64-elf-
+	make -j"$PROCS" O=out \
+				PATH=$CLANG_DIR/bin:$GCC64_DIR/bin/:$GCC32_DIR/bin/:/usr/bin:$PATH \
+				LD_LIBRARY_PATH="$CLANG_DIR/lib64:${LD_LIBRARY_PATH}" \
+				CC=clang \
+				CROSS_COMPILE=aarch64-linux-android- \
+				CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+				AR=aarch64-linux-androidkernel-ar \
+				AS=llvm-as \
+				NM=llvm-nm \
+				OBJCOPY=aarch64-linux-androidkernel-objcopy \
+				OBJDUMP=llvm-objdump \
+				OBJSIZE=llvm-size \
+				READELF=llvm-readelf \
+				STRIP=llvm-strip \
+				HOSTCC=clang \
+				HOSTCXX=clang++ \
+				HOSTAR=aarch64-linux-androidkernel-ar \
+				HOSTLD=ld.lld \
+				LD=ld.lld \
+				CLANG_TRIPLE=aarch64-linux-gnu-
 
 		BUILD_END=$(date +"%s")
 		DIFF=$((BUILD_END - BUILD_START))
@@ -253,16 +293,12 @@ build_kernel() {
 
 gen_zip() {
 	msg "|| Zipping into a flashable zip ||"
-	mv "$KERNEL_DIR"/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/Image.gz-dtb
-	if [ $BUILD_DTBO = 1 ]
-	then
-		mv "$KERNEL_DIR"/out/arch/arm64/boot/dtbo.img AnyKernel3/dtbo.img
-	fi
-	cd AnyKernel3 || exit
-	zip -r9 $ZIPNAME-$DEVICE-"$DATE" * -x .git README.md
+	mv "$KERNEL_DIR"/out/arch/arm64/boot/Image.gz-dtb $KERNEL_DIR/AnyKernel3/Image.gz-dtb
+	cd $KERNEL_DIR/AnyKernel3 || exit
+	zip -r9 "$ZIPNAME.zip" * -x .git README.md
 
 	## Prepare a final zip variable
-	ZIP_FINAL="$ZIPNAME-$DEVICE-$DATE.zip"
+	ZIP_FINAL="$ZIPNAME.zip"
 	if [ "$PTTG" = 1 ]
  	then
 		tg_post_build "$ZIP_FINAL" "$CHATID" "✅ Build took : $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)"
